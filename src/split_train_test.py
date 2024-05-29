@@ -12,8 +12,9 @@ Setting up full path to directory with downloaded images
 # or:
 # 'C:\\Users\\my_name\\OIDv4_ToolKit\\OID\\Dataset\\train\Car_Bicycle_wheel_Bus'
 
-full_path_to_images = \
-    '/content/drive/MyDrive/ColabNotebooks/yolo-object-detection-custom/data/labelled/labelled_data'
+full_path_to_images = /'/content/drive/MyDrive/ColabNotebooks/yolo-object-detection-custom/data/labelled/labelled_data'
+ #    '/home/student/Documents/code/AutomaticGuidewireDetection/data/NEWDATA'
+#'/content/drive/MyDrive/ColabNotebooks/yolo-object-detection-custom/data/labelled/labelled_data'
 
 """
 End of:
