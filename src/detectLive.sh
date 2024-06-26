@@ -1,1 +1,0 @@
-python yolov5/detect.py --weights ../weights/laboratory/weights/best.pt --source 0
