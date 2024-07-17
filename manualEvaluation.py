@@ -13,6 +13,7 @@ def convert(groundtruth, imgshape):
     w = float(groundtruth[2])
     h = float(groundtruth[3])
 
+    # numpy for images is always HxWxD
     img_w = imgshape[1]
     img_h = imgshape[0]
 
@@ -95,7 +96,8 @@ if __name__ == '__main__':
         is_tip_inside = "not valid"
         if ground_truth is not None:
             annotator.box_label(convert(ground_truth, img.shape), label="Truth", color=(0, 255, 0))
-            true_tip_pos = (ground_truth[0] * img.shape[0], ground_truth[1] * img.shape[1])
+            # numpy for images is always HxWxD
+            true_tip_pos = (ground_truth[0]*img.shape[1], ground_truth[1]*img.shape[0])
             is_tip_inside = check_tip_in_box(true_tip_pos, highest_box)
 
         img_with_boxes = annotator.result()
