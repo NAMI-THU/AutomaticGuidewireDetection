@@ -13,7 +13,7 @@ def analyze(model_path: str, dataset: str, subdata: str, output_path: str):
     model = YOLO(model_path)
     conf_threshold = 0.25
     allowed_threshold = 0.01
-    save_prediction_images = True
+    save_prediction_images = False
 
     image_folder = os.path.join(dataset, "images", subdata)
     label_folder = os.path.join(dataset, "labels", subdata)
