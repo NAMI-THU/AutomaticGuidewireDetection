@@ -42,7 +42,7 @@ def area(_box):
 
 def analyze(model_path: str, dataset: str, subdata: str, output_path: str):
     model = YOLO(model_path)
-    conf_threshold = 0.1
+    conf_threshold = 0.25
     save_prediction_images = False
 
     image_folder = os.path.join(dataset, "images", subdata)
