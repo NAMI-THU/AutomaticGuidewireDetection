@@ -161,3 +161,5 @@ cython_debug/
 data/
 runs/
 models/
+evaluation/clinic/images
+evaluation/lab/images

@@ -13,7 +13,7 @@ def analyze(model_path: str, dataset: str, subdata: str, output_path: str):
     model = YOLO(model_path)
     conf_threshold = 0.25
     allowed_threshold = 0.01
-    save_prediction_images = False
+    save_prediction_images = True
 
     image_folder = os.path.join(dataset, "images", subdata)
     label_folder = os.path.join(dataset, "labels", subdata)
@@ -129,6 +129,6 @@ if __name__ == '__main__':
         tp, fp, tn, fn = analyze(model, data, subset, output)
         print(f"Results for {task}:\n"
               f"\tTip existed and was correctly detected:\t\t\t{round(tp*100,2)}%\n"
+              f"\tA tip exists, but was not *correctly* detected\t{round(fn*100,2)}%\n"
               f"\tNo tip exists, but a prediction was done:\t\t{round(fp*100,2)}%\n"
-              f"\tNo tip exists and no prediction was done:\t\t{round(tn*100,2)}%\n"
-              f"\tA tip exists, but was not *correctly* detected\t{round(fn*100,2)}%")
+              f"\tNo tip exists and no prediction was done:\t\t{round(tn*100,2)}%")
