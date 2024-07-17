@@ -61,7 +61,7 @@ def analyze(model_path: str, dataset: str, subdata: str, output_path: str, dista
             if conf >= conf_threshold:
                 all_boxes.append(box)
                 if save_prediction_images:
-                    annotator.box_label(box, label=f"Prediction ({str(np.round(conf, 2))})", color=(200, 100, 0))
+                    annotator.box_label(boxes.xyxy[j].cpu().numpy(), label=f"Prediction ({str(np.round(conf, 2))})", color=(200, 100, 0))
                 if conf >= highest_conf:
                     highest_conf = conf
                     highest_box = box
@@ -73,7 +73,7 @@ def analyze(model_path: str, dataset: str, subdata: str, output_path: str, dista
             contains_annotation.append(True)
 
             if save_prediction_images:
-                annotator.box_label(convert(ground_truth), label="Truth", color=(0, 255, 0))
+                annotator.box_label(convert(ground_truth, img.shape), label="Truth", color=(0, 255, 0))
             # numpy for images is always HxWxD
             if distance_based:
                 true_tip_pos = (ground_truth[0] * img.shape[1], ground_truth[1] * img.shape[0])
@@ -135,8 +135,9 @@ if __name__ == '__main__':
         # model = f"models/train11-big-300epochs/weights/best.pt"
         data = f"data/{task.upper()}/"
         subset = "test"
-        output = f"evaluation-yolo8L-300/{task}"
-        tp, fp, tn, fn = analyze(model, data, subset, output, distance_based=True, pixel_radius=20, allowance_threshold=0, save_csv=False)
+        output = f"evaluation/{task}"
+        # output = f"evaluation-yolo8L-300/{task}"
+        tp, fp, tn, fn = analyze(model, data, subset, output, distance_based=False, pixel_radius=20, allowance_threshold=0.01, save_csv=True, save_prediction_images=True)
         print(f"Results for {task}:\n"
               f"\tTip existed and was correctly detected:\t\t\t{round(tp*100,2)}%\n"
               f"\tA tip exists, but was not *correctly* detected\t{round(fn*100,2)}%\n"
