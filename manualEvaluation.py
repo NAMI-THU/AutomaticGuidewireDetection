@@ -108,7 +108,7 @@ def analyze(model_path: str, dataset: str, subdata: str, output_path: str):
         else:
             contains_annotation.append(False)
             # If the image was empty, e.g. no annotation available, check if the model still predicted something
-            if len(all_boxes) >= 0:
+            if len(all_boxes) > 0:
                 predicted_on_background.append(True)
             else:
                 predicted_on_background.append(False)
@@ -139,9 +139,9 @@ def analyze(model_path: str, dataset: str, subdata: str, output_path: str):
     # TP: Tip exists and was correctly detected
     true_positives = correct_tips/len(files_with_annotations)
     # FP: No tip exists, but a prediction was done
-    false_positives = sum([1. for x in range(len(predicted_on_background)) if predicted_on_background[x] is True])/len(predicted_on_background)
+    false_positives = sum([1. for x in range(len(predicted_on_background)) if predicted_on_background[x] is True])/len([1. for x in range(len(predicted_on_background)) if predicted_on_background[x] is True or predicted_on_background[x] is False])
     # TN: No tip exists and also no prediction was done
-    true_negatives = sum([1. for x in range(len(predicted_on_background)) if predicted_on_background[x] is False])/len(predicted_on_background)
+    true_negatives = sum([1. for x in range(len(predicted_on_background)) if predicted_on_background[x] is False])/len([1. for x in range(len(predicted_on_background)) if predicted_on_background[x] is True or predicted_on_background[x] is False])
     # FN: A tip exists, but was not correctly detected (but possible something was predicted somewhere else)
     false_negatives = sum([1. for x in files_with_annotations if tip_inside[x] is False])/len(files_with_annotations)
     # Accuracy: When a tip was there, how often was it recognized?
@@ -154,7 +154,7 @@ if __name__ == '__main__':
         model = f"models/{task}/weights/best.pt"
         data = f"data/{task.upper()}/"
         subset = "test"
-        output = "evaluation/lab"
+        output = f"evaluation/{task}"
         tp, fp, tn, fn = analyze(model, data, subset, output)
         print(f"Results for {task}:\n"
               f"\tTip existed and was correctly detected:\t\t\t{round(tp*100,2)}%\n"
