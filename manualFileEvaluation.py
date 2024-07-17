@@ -1,9 +1,10 @@
 import os
 
 import numpy as np
+from PIL import Image as PILImage
 from tqdm import tqdm
 
-from evaluation_utils import check_tip_in_box, convert
+from evaluation_utils import check_tip_in_box, convert, tip_distance_in_range
 
 
 def read_prediction(directory, file):
@@ -28,10 +29,12 @@ def read_prediction(directory, file):
     else:
         return None
 
-def analyze_from_file(predictions_path: str, dataset: str, subdata: str, output_path: str):
-    allowed_threshold = 0.01
+def analyze_from_file(predictions_path: str, dataset: str, subdata: str, output_path: str,distance_based=True, pixel_radius=10, allowance_threshold=0.01, save_csv=False):
+    # Distance based: Calculate pixel distance and check if in radius. If False, fallback to check if in (extended) bounding box
     image_folder = os.path.join(dataset, "images", subdata)
     label_folder = os.path.join(dataset, "labels", subdata)
+
+    print(f"Evaluating with Distance Based: {distance_based}, Pixel Radius: {pixel_radius}, Allowance Threshold: {allowance_threshold}, CSV: {save_csv}")
 
     os.makedirs(output_path, exist_ok=True)
 
@@ -48,6 +51,9 @@ def analyze_from_file(predictions_path: str, dataset: str, subdata: str, output_
             continue
         label_path = os.path.join(label_folder, file.replace(".png", ".txt"))
         prediction_boxes = read_prediction(predictions_path, file.replace(".png", ".txt"))
+
+        if distance_based:
+            image_shape = np.asarray(PILImage.open(os.path.join(image_folder,file))).shape
 
         ground_truth = None
         if os.path.exists(label_path):
@@ -67,12 +73,20 @@ def analyze_from_file(predictions_path: str, dataset: str, subdata: str, output_
             predicted_on_background.append("nan")
             contains_annotation.append(True)
 
-            true_tip_pos = (ground_truth[0], ground_truth[1])
+            if distance_based:
+                true_tip_pos = (ground_truth[0] * image_shape[1], ground_truth[1] * image_shape[0])
+            else:
+                true_tip_pos = (ground_truth[0], ground_truth[1])
+
             if prediction_boxes is None:
                 is_tip_inside_highest_box = False
             else:
-                is_tip_inside_highest_box = check_tip_in_box(true_tip_pos, convert(prediction_boxes[0]["box"]),allowed_threshold)
-                is_tip_inside_any_box = any([check_tip_in_box(true_tip_pos, convert(box["box"]),allowed_threshold) for box in prediction_boxes])
+                if distance_based:
+                    is_tip_inside_highest_box = tip_distance_in_range(true_tip_pos, convert(prediction_boxes[0]["box"], image_shape),pixel_radius)
+                    is_tip_inside_any_box = any([tip_distance_in_range(true_tip_pos, convert(box["box"], image_shape),pixel_radius) for box in prediction_boxes])
+                else:
+                    is_tip_inside_highest_box = check_tip_in_box(true_tip_pos, convert(prediction_boxes[0]["box"]),allowance_threshold)
+                    is_tip_inside_any_box = any([check_tip_in_box(true_tip_pos, convert(box["box"]),allowance_threshold) for box in prediction_boxes])
         else:
             contains_annotation.append(False)
             # If the image was empty, e.g. no annotation available, check if the model still predicted something
@@ -90,7 +104,8 @@ def analyze_from_file(predictions_path: str, dataset: str, subdata: str, output_
                                   tip_inside,
                                   tip_inside_any,
                                   predicted_on_background)]
-    np.savetxt(os.path.join(output_path, 'evaluation.csv'), zipped_data, delimiter=',', fmt='%s')
+    if save_csv:
+        np.savetxt(os.path.join(output_path, 'evaluation.csv'), zipped_data, delimiter=',', fmt='%s')
 
     files_with_annotations = [x for x in range(len(contains_annotation)) if contains_annotation[x] is True]
     correct_tips = sum([1. for x in files_with_annotations if tip_inside[x] is True])
@@ -126,7 +141,7 @@ if __name__ == '__main__':
         subset = "test"
         output = f"evaluation-yolo5/{task}"
         label_path = f"data/yolo5annotations/{task}"
-        tp, fp, tn, fn = analyze_from_file(label_path, data, subset, output)
+        tp, fp, tn, fn = analyze_from_file(label_path, data, subset, output, distance_based=True, pixel_radius=10, allowance_threshold=0.01, save_csv=True)
         print(f"Results for {task}:\n"
               f"\tTip existed and was correctly detected:\t\t\t{round(tp*100,2)}%\n"
               f"\tA tip exists, but was not *correctly* detected\t{round(fn*100,2)}%\n"

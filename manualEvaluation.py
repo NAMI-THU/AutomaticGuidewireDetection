@@ -6,14 +6,14 @@ from ultralytics.utils.plotting import Annotator
 from PIL import Image as PILImage
 from tqdm import tqdm
 
-from evaluation_utils import convert, check_tip_in_box, area
+from evaluation_utils import convert, check_tip_in_box, area, tip_distance_in_range
 
 
-def analyze(model_path: str, dataset: str, subdata: str, output_path: str):
-    model = YOLO(model_path)
+def analyze(model_path: str, dataset: str, subdata: str, output_path: str, distance_based=True, pixel_radius=10, allowance_threshold=0.01, save_csv=False, save_prediction_images = False):
     conf_threshold = 0.25
-    allowed_threshold = 0.01
-    save_prediction_images = False
+    print(f"Evaluating with Distance Based: {distance_based}, Pixel Radius: {pixel_radius}, Allowance Threshold: {allowance_threshold}, Conf Threshold: {conf_threshold}, CSV: {save_csv}, Prediction Images: {save_prediction_images}")
+
+    model = YOLO(model_path)
 
     image_folder = os.path.join(dataset, "images", subdata)
     label_folder = os.path.join(dataset, "labels", subdata)
@@ -53,7 +53,10 @@ def analyze(model_path: str, dataset: str, subdata: str, output_path: str):
         boxes = prediction.boxes
         all_boxes = []
         for j in range(boxes.shape[0]):
-            box = boxes.xyxyn[j].cpu().numpy()
+            if distance_based:
+                box = boxes.xyxy[j].cpu().numpy()
+            else:
+                box = boxes.xyxyn[j].cpu().numpy()
             conf = boxes.conf[j].cpu().numpy()
             if conf >= conf_threshold:
                 all_boxes.append(box)
@@ -72,9 +75,14 @@ def analyze(model_path: str, dataset: str, subdata: str, output_path: str):
             if save_prediction_images:
                 annotator.box_label(convert(ground_truth), label="Truth", color=(0, 255, 0))
             # numpy for images is always HxWxD
-            true_tip_pos = (ground_truth[0], ground_truth[1])
-            is_tip_inside_highest_box = check_tip_in_box(true_tip_pos, highest_box, allowed_threshold)
-            is_tip_inside_any_box = any([check_tip_in_box(true_tip_pos, box,allowed_threshold) for box in all_boxes])
+            if distance_based:
+                true_tip_pos = (ground_truth[0] * img.shape[1], ground_truth[1] * img.shape[0])
+                is_tip_inside_highest_box = tip_distance_in_range(true_tip_pos, highest_box, pixel_radius)
+                is_tip_inside_any_box = any([tip_distance_in_range(true_tip_pos, box,pixel_radius) for box in all_boxes])
+            else:
+                true_tip_pos = (ground_truth[0], ground_truth[1])
+                is_tip_inside_highest_box = check_tip_in_box(true_tip_pos, highest_box, allowance_threshold)
+                is_tip_inside_any_box = any([check_tip_in_box(true_tip_pos, box, allowance_threshold) for box in all_boxes])
         else:
             contains_annotation.append(False)
             # If the image was empty, e.g. no annotation available, check if the model still predicted something
@@ -102,7 +110,8 @@ def analyze(model_path: str, dataset: str, subdata: str, output_path: str):
                                   tip_inside,
                                   tip_inside_any,
                                   predicted_on_background)]
-    np.savetxt(os.path.join(output_path, 'evaluation.csv'), zipped_data, delimiter=',', fmt='%s')
+    if save_csv:
+        np.savetxt(os.path.join(output_path, 'evaluation.csv'), zipped_data, delimiter=',', fmt='%s')
 
     files_with_annotations = [x for x in range(len(contains_annotation)) if contains_annotation[x] is True]
     correct_tips = sum([1. for x in files_with_annotations if tip_inside[x] is True])
@@ -123,10 +132,11 @@ if __name__ == '__main__':
     tasks = ["clinic", "lab"]   #combined
     for task in tasks:
         model = f"models/{task}/weights/best.pt"
+        # model = f"models/train11-big-300epochs/weights/best.pt"
         data = f"data/{task.upper()}/"
         subset = "test"
-        output = f"evaluation/{task}"
-        tp, fp, tn, fn = analyze(model, data, subset, output)
+        output = f"evaluation-yolo8L-300/{task}"
+        tp, fp, tn, fn = analyze(model, data, subset, output, distance_based=True, pixel_radius=20, allowance_threshold=0, save_csv=False)
         print(f"Results for {task}:\n"
               f"\tTip existed and was correctly detected:\t\t\t{round(tp*100,2)}%\n"
               f"\tA tip exists, but was not *correctly* detected\t{round(fn*100,2)}%\n"

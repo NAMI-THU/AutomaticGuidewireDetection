@@ -1,3 +1,6 @@
+import math
+
+
 def convert(_ground_truth, _img_shape=(1,1)):
     x = float(_ground_truth[0])
     y = float(_ground_truth[1])
@@ -21,6 +24,15 @@ def check_tip_in_box(_true_tip_pos, _prediction, allowed_threshold=0.):
         return True
     return False
 
+def tip_distance_in_range(_true_tip_pos, _prediction, pixel_radius):
+    if _prediction is None:
+        return False
+
+    center_x = (_prediction[0]+_prediction[2])/2
+    center_y = (_prediction[1]+_prediction[3])/2
+
+    distance = math.sqrt((center_x - _true_tip_pos[0])**2 + (center_y - _true_tip_pos[1])**2)
+    return distance <= pixel_radius
 
 def area(_box):
     if _box is None:
