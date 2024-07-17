@@ -157,7 +157,7 @@ if __name__ == '__main__':
         output = "evaluation/lab"
         tp, fp, tn, fn = analyze(model, data, subset, output)
         print(f"Results for {task}:\n"
-              f"\tTip existed and was correctly detected:\t\t\t{round(tp,2)}%\n"
-              f"\tNo tip exists, but a prediction was done:\t\t{round(fp,2)}%\n"
-              f"\tNo tip exists and no prediction was done:\t\t{round(tn,2)}%\n"
-              f"\tA tip exists, but was not *correctly* detected\t{round(fn,2)}%")
+              f"\tTip existed and was correctly detected:\t\t\t{round(tp*100,2)}%\n"
+              f"\tNo tip exists, but a prediction was done:\t\t{round(fp*100,2)}%\n"
+              f"\tNo tip exists and no prediction was done:\t\t{round(tn*100,2)}%\n"
+              f"\tA tip exists, but was not *correctly* detected\t{round(fn*100,2)}%")
