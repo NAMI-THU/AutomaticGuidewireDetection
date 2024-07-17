@@ -3,7 +3,7 @@ import os
 import numpy as np
 from ultralytics import YOLO
 from ultralytics.utils.plotting import Annotator
-import matplotlib.pyplot as plt
+from PIL import Image as PILImage
 from tqdm import tqdm
 
 from evaluation_utils import convert, check_tip_in_box, area
@@ -85,8 +85,9 @@ def analyze(model_path: str, dataset: str, subdata: str, output_path: str):
 
         if save_prediction_images:
             img_with_boxes = annotator.result()
-            plt.imshow(img_with_boxes)
-            plt.savefig(os.path.join(output_path, f"out_{image_file}"))
+            output_image_path = os.path.join(output_path,"images")
+            os.makedirs(output_image_path, exist_ok=True)
+            PILImage.fromarray(img_with_boxes).save(os.path.join(output_image_path, f"out_{image_file}"))
 
         file_names.append(image_file)
         highest_conf_save.append(highest_conf)
