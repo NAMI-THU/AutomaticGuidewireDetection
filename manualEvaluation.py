@@ -57,14 +57,15 @@ if __name__ == '__main__':
     conf_size = ["Area of max conf box"]
     tip_inside = ["Tip inside prediction"]
 
-    for image_file in tqdm(os.listdir(image_folder)):
+    collected_data = []
+    ground_truths = []
+
+    for image_file in tqdm(os.listdir(image_folder), desc="Preparing"):
         if "BG" in image_file:
             # TODO: Evaluate background too
             continue
         image_path = os.path.join(image_folder, image_file)
         label_path = os.path.join(label_folder, image_file.replace(".png", ".txt"))
-
-        prediction = model(image_path,verbose=False)
 
         ground_truth = None
         if os.path.exists(label_path):
@@ -78,6 +79,13 @@ if __name__ == '__main__':
 
                 ground_truth = tuple(to_float)
 
+        collected_data.append(image_path)
+        ground_truths.append(ground_truth)
+
+    predictions = model(collected_data, stream=True, verbose=False)
+    for i, prediction in enumerate(tqdm(predictions,"Analysing")):
+        image_file = collected_data[i].split("/")[-1]
+        ground_truth = ground_truths[i]
         img = prediction[0].orig_img
         annotator = Annotator(img)
         boxes = prediction[0].boxes
