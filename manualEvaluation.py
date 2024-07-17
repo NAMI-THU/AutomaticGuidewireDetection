@@ -6,43 +6,13 @@ from ultralytics.utils.plotting import Annotator
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 
-
-def convert(_ground_truth, _img_shape):
-    x = float(_ground_truth[0])
-    y = float(_ground_truth[1])
-    w = float(_ground_truth[2])
-    h = float(_ground_truth[3])
-
-    # numpy for images is always HxWxD
-    img_w = _img_shape[1]
-    img_h = _img_shape[0]
-
-    new_data = ((x - w / 2) * img_w, (y - h / 2) * img_h, (x + w / 2) * img_w, (y + h / 2) * img_h)
-    return new_data
-
-
-def check_tip_in_box(_true_tip_pos, _prediction):
-    if _prediction is None:
-        return False
-
-    if (_prediction[0] <= _true_tip_pos[0] <= _prediction[2]
-            and _prediction[1] <= _true_tip_pos[1] <= _prediction[3]):
-        return True
-    return False
-
-
-def area(_box):
-    if _box is None:
-        return 0
-
-    w = _box[2] - _box[0]
-    h = _box[3] - _box[1]
-    return w * h
+from evaluation_utils import convert, check_tip_in_box, area
 
 
 def analyze(model_path: str, dataset: str, subdata: str, output_path: str):
     model = YOLO(model_path)
     conf_threshold = 0.25
+    allowed_threshold = 0.01
     save_prediction_images = False
 
     image_folder = os.path.join(dataset, "images", subdata)
@@ -83,7 +53,7 @@ def analyze(model_path: str, dataset: str, subdata: str, output_path: str):
         boxes = prediction.boxes
         all_boxes = []
         for j in range(boxes.shape[0]):
-            box = boxes.xyxy[j].cpu().numpy()
+            box = boxes.xyxyn[j].cpu().numpy()
             conf = boxes.conf[j].cpu().numpy()
             if conf >= conf_threshold:
                 all_boxes.append(box)
@@ -100,11 +70,11 @@ def analyze(model_path: str, dataset: str, subdata: str, output_path: str):
             contains_annotation.append(True)
 
             if save_prediction_images:
-                annotator.box_label(convert(ground_truth, img.shape), label="Truth", color=(0, 255, 0))
+                annotator.box_label(convert(ground_truth), label="Truth", color=(0, 255, 0))
             # numpy for images is always HxWxD
-            true_tip_pos = (ground_truth[0] * img.shape[1], ground_truth[1] * img.shape[0])
-            is_tip_inside_highest_box = check_tip_in_box(true_tip_pos, highest_box)
-            is_tip_inside_any_box = any([check_tip_in_box(true_tip_pos, box) for box in all_boxes])
+            true_tip_pos = (ground_truth[0], ground_truth[1])
+            is_tip_inside_highest_box = check_tip_in_box(true_tip_pos, highest_box, allowed_threshold)
+            is_tip_inside_any_box = any([check_tip_in_box(true_tip_pos, box,allowed_threshold) for box in all_boxes])
         else:
             contains_annotation.append(False)
             # If the image was empty, e.g. no annotation available, check if the model still predicted something
@@ -149,7 +119,7 @@ def analyze(model_path: str, dataset: str, subdata: str, output_path: str):
 
 
 if __name__ == '__main__':
-    tasks = ["lab", "clinic", "combined"]
+    tasks = ["clinic", "lab"]   #combined
     for task in tasks:
         model = f"models/{task}/weights/best.pt"
         data = f"data/{task.upper()}/"

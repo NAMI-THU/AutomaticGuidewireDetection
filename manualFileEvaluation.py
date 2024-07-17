@@ -1,43 +1,10 @@
 import os
 
 import numpy as np
-from ultralytics import YOLO
-from ultralytics.utils.plotting import Annotator
-import matplotlib.pyplot as plt
 from tqdm import tqdm
 
+from evaluation_utils import check_tip_in_box, convert
 
-def convert(_ground_truth, _img_shape=(1,1)):
-    x = float(_ground_truth[0])
-    y = float(_ground_truth[1])
-    w = float(_ground_truth[2])
-    h = float(_ground_truth[3])
-
-    # numpy for images is always HxWxD
-    img_w = _img_shape[1]
-    img_h = _img_shape[0]
-
-    new_data = ((x - w / 2) * img_w, (y - h / 2) * img_h, (x + w / 2) * img_w, (y + h / 2) * img_h)
-    return new_data
-
-
-def check_tip_in_box(_true_tip_pos, _prediction):
-    if _prediction is None:
-        return False
-
-    if (_prediction[0] <= _true_tip_pos[0] <= _prediction[2]
-            and _prediction[1] <= _true_tip_pos[1] <= _prediction[3]):
-        return True
-    return False
-
-
-def area(_box):
-    if _box is None:
-        return 0
-
-    w = _box[2] - _box[0]
-    h = _box[3] - _box[1]
-    return w * h
 
 def read_prediction(directory, file):
     file_path = os.path.join(directory, file)
@@ -62,7 +29,7 @@ def read_prediction(directory, file):
         return None
 
 def analyze_from_file(predictions_path: str, dataset: str, subdata: str, output_path: str):
-    conf_threshold = 0.1
+    allowed_threshold = 0.01
     image_folder = os.path.join(dataset, "images", subdata)
     label_folder = os.path.join(dataset, "labels", subdata)
 
@@ -104,8 +71,8 @@ def analyze_from_file(predictions_path: str, dataset: str, subdata: str, output_
             if prediction_boxes is None:
                 is_tip_inside_highest_box = False
             else:
-                is_tip_inside_highest_box = check_tip_in_box(true_tip_pos, convert(prediction_boxes[0]["box"]))
-                is_tip_inside_any_box = any([check_tip_in_box(true_tip_pos, convert(box["box"])) for box in prediction_boxes])
+                is_tip_inside_highest_box = check_tip_in_box(true_tip_pos, convert(prediction_boxes[0]["box"]),allowed_threshold)
+                is_tip_inside_any_box = any([check_tip_in_box(true_tip_pos, convert(box["box"]),allowed_threshold) for box in prediction_boxes])
         else:
             contains_annotation.append(False)
             # If the image was empty, e.g. no annotation available, check if the model still predicted something
