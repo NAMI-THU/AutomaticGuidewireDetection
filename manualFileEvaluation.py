@@ -151,7 +151,7 @@ if __name__ == '__main__':
         subset = "test"
         for mode in modes:
             output = f"evaluation-yolo5/{task}/{mode['name']}"
-            label_path = f"data/yolo5annotations/{task}"
+            label_path = f"data/yolo5annotations/last-model/{task}"
             tp, fp, tn, fn = analyze_from_file(label_path, data, subset, output,
                                                distance_based=mode['distance_based'],
                                                pixel_radius=mode['pixel_radius'],

@@ -153,7 +153,7 @@ if __name__ == '__main__':
              ]
     for task in tasks:
         # model = f"models/{task}/weights/best.pt"
-        model = f"models/train15-earlystopping184epochs-8l-clinic/weights/best.pt"
+        model = f"models/train15-earlystopping184epochs-8l-clinic/weights/last.pt"
         data = f"data/{task.upper()}/"
         subset = "test"
         # output = f"evaluation/{task}"
