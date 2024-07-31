@@ -35,6 +35,11 @@ def analyze_from_file(predictions_path: str, dataset: str, subdata: str, output_
     label_folder = os.path.join(dataset, "labels", subdata)
 
     print(f"Evaluating with Distance Based: {distance_based}, Pixel Radius: {pixel_radius}, Allowance Threshold: {allowance_threshold}, CSV: {save_csv}")
+    if distance_based:
+        mode = f"d={pixel_radius} pixel"
+    else:
+        mode = f"{round(allowance_threshold * 100, 0)}% allowance"
+    print(f"=== This is mode {mode} ===")
 
     os.makedirs(output_path, exist_ok=True)
 
@@ -136,14 +141,25 @@ def analyze_from_file(predictions_path: str, dataset: str, subdata: str, output_
 
 
 if __name__ == '__main__':
-    for task in ["clinic","lab"]:
+    modes = [{"distance_based": False, "allowance_threshold": 0, "pixel_radius": 0, "name": "0_allowance"},
+             {"distance_based": False, "allowance_threshold": 0.01, "pixel_radius": 0, "name": "0.01_allowance"},
+             {"distance_based": True, "pixel_radius": 10, "allowance_threshold": 0, "name": "d=10"},
+             {"distance_based": True, "pixel_radius": 20, "allowance_threshold": 0, "name": "d=20"}
+             ]
+    for task in ["clinic"]: #,"lab"]:
         data = f"data/{task.upper()}/"
         subset = "test"
-        output = f"evaluation-yolo5/{task}"
-        label_path = f"data/yolo5annotations/{task}"
-        tp, fp, tn, fn = analyze_from_file(label_path, data, subset, output, distance_based=True, pixel_radius=10, allowance_threshold=0.01, save_csv=True)
-        print(f"Results for {task}:\n"
-              f"\tTip existed and was correctly detected:\t\t\t{round(tp*100,2)}%\n"
-              f"\tA tip exists, but was not *correctly* detected\t{round(fn*100,2)}%\n"
-              f"\tNo tip exists, but a prediction was done:\t\t{round(fp*100,2)}%\n"
-              f"\tNo tip exists and no prediction was done:\t\t{round(tn*100,2)}%")
+        for mode in modes:
+            output = f"evaluation-yolo5/{task}/{mode['name']}"
+            label_path = f"data/yolo5annotations/{task}"
+            tp, fp, tn, fn = analyze_from_file(label_path, data, subset, output,
+                                               distance_based=mode['distance_based'],
+                                               pixel_radius=mode['pixel_radius'],
+                                               allowance_threshold=mode['allowance_threshold'],
+                                               save_csv=True)
+
+            print(f"Results for {task} with mode {mode['name']}:\n"
+                  f"\tTip existed and was correctly detected:\t\t\t{round(tp * 100, 2)}%\n"
+                  f"\tA tip exists, but was not *correctly* detected\t{round(fn * 100, 2)}%\n"
+                  f"\tNo tip exists, but a prediction was made:\t\t{round(fp * 100, 2)}%\n"
+                  f"\tNo tip exists and no prediction was made:\t\t{round(tn * 100, 2)}%")

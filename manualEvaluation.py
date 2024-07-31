@@ -1,17 +1,24 @@
 import os
 
 import numpy as np
-from ultralytics import YOLO
-from ultralytics.utils.plotting import Annotator
 from PIL import Image as PILImage
 from tqdm import tqdm
+from ultralytics import YOLO
+from ultralytics.utils.plotting import Annotator
 
 from evaluation_utils import convert, check_tip_in_box, area, tip_distance_in_range
 
 
-def analyze(model_path: str, dataset: str, subdata: str, output_path: str, distance_based=True, pixel_radius=10, allowance_threshold=0.01, save_csv=False, save_prediction_images = False):
+def analyze(model_path: str, dataset: str, subdata: str, output_path: str, distance_based=True, pixel_radius=10,
+            allowance_threshold=0.01, save_csv=False, save_prediction_images=False):
     conf_threshold = 0.25
-    print(f"Evaluating with Distance Based: {distance_based}, Pixel Radius: {pixel_radius}, Allowance Threshold: {allowance_threshold}, Conf Threshold: {conf_threshold}, CSV: {save_csv}, Prediction Images: {save_prediction_images}")
+    print(
+        f"Evaluating with Distance Based: {distance_based}, Pixel Radius: {pixel_radius}, Allowance Threshold: {allowance_threshold}, Conf Threshold: {conf_threshold}, CSV: {save_csv}, Prediction Images: {save_prediction_images}")
+    if distance_based:
+        mode = f"d={pixel_radius} pixel"
+    else:
+        mode = f"{round(allowance_threshold * 100, 0)}% allowance"
+    print(f"=== This is mode {mode} ===")
 
     model = YOLO(model_path)
 
@@ -61,7 +68,8 @@ def analyze(model_path: str, dataset: str, subdata: str, output_path: str, dista
             if conf >= conf_threshold:
                 all_boxes.append(box)
                 if save_prediction_images:
-                    annotator.box_label(boxes.xyxy[j].cpu().numpy(), label=f"Prediction ({str(np.round(conf, 2))})", color=(200, 100, 0))
+                    annotator.box_label(boxes.xyxy[j].cpu().numpy(), label=f"Prediction ({str(np.round(conf, 2))})",
+                                        color=(200, 100, 0))
                 if conf >= highest_conf:
                     highest_conf = conf
                     highest_box = box
@@ -78,11 +86,13 @@ def analyze(model_path: str, dataset: str, subdata: str, output_path: str, dista
             if distance_based:
                 true_tip_pos = (ground_truth[0] * img.shape[1], ground_truth[1] * img.shape[0])
                 is_tip_inside_highest_box = tip_distance_in_range(true_tip_pos, highest_box, pixel_radius)
-                is_tip_inside_any_box = any([tip_distance_in_range(true_tip_pos, box,pixel_radius) for box in all_boxes])
+                is_tip_inside_any_box = any(
+                    [tip_distance_in_range(true_tip_pos, box, pixel_radius) for box in all_boxes])
             else:
                 true_tip_pos = (ground_truth[0], ground_truth[1])
                 is_tip_inside_highest_box = check_tip_in_box(true_tip_pos, highest_box, allowance_threshold)
-                is_tip_inside_any_box = any([check_tip_in_box(true_tip_pos, box, allowance_threshold) for box in all_boxes])
+                is_tip_inside_any_box = any(
+                    [check_tip_in_box(true_tip_pos, box, allowance_threshold) for box in all_boxes])
         else:
             contains_annotation.append(False)
             # If the image was empty, e.g. no annotation available, check if the model still predicted something
@@ -93,7 +103,7 @@ def analyze(model_path: str, dataset: str, subdata: str, output_path: str, dista
 
         if save_prediction_images:
             img_with_boxes = annotator.result()
-            output_image_path = os.path.join(output_path,"images")
+            output_image_path = os.path.join(output_path, "images")
             os.makedirs(output_image_path, exist_ok=True)
             PILImage.fromarray(img_with_boxes).save(os.path.join(output_image_path, f"out_{image_file}"))
 
@@ -117,29 +127,46 @@ def analyze(model_path: str, dataset: str, subdata: str, output_path: str, dista
     correct_tips = sum([1. for x in files_with_annotations if tip_inside[x] is True])
     # Interpretation for this case:
     # TP: Tip exists and was correctly detected
-    true_positives = correct_tips/len(files_with_annotations)
+    true_positives = correct_tips / len(files_with_annotations)
     # FP: No tip exists, but a prediction was done
-    false_positives = sum([1. for x in range(len(predicted_on_background)) if predicted_on_background[x] is True])/len([1. for x in range(len(predicted_on_background)) if predicted_on_background[x] is True or predicted_on_background[x] is False])
+    false_positives = sum(
+        [1. for x in range(len(predicted_on_background)) if predicted_on_background[x] is True]) / len(
+        [1. for x in range(len(predicted_on_background)) if
+         predicted_on_background[x] is True or predicted_on_background[x] is False])
     # TN: No tip exists and also no prediction was done
-    true_negatives = sum([1. for x in range(len(predicted_on_background)) if predicted_on_background[x] is False])/len([1. for x in range(len(predicted_on_background)) if predicted_on_background[x] is True or predicted_on_background[x] is False])
+    true_negatives = sum(
+        [1. for x in range(len(predicted_on_background)) if predicted_on_background[x] is False]) / len(
+        [1. for x in range(len(predicted_on_background)) if
+         predicted_on_background[x] is True or predicted_on_background[x] is False])
     # FN: A tip exists, but was not correctly detected (but possible something was predicted somewhere else)
-    false_negatives = sum([1. for x in files_with_annotations if tip_inside[x] is False])/len(files_with_annotations)
+    false_negatives = sum([1. for x in files_with_annotations if tip_inside[x] is False]) / len(files_with_annotations)
     # Accuracy: When a tip was there, how often was it recognized?
     return true_positives, false_positives, true_negatives, false_negatives
 
 
 if __name__ == '__main__':
-    tasks = ["clinic", "lab"]   #combined
+    tasks = ["clinic"]  # , "lab"]   #combined
+    modes = [{"distance_based": False, "allowance_threshold": 0, "pixel_radius": 0, "name": "0_allowance"},
+             {"distance_based": False, "allowance_threshold": 0.01, "pixel_radius": 0, "name": "0.01_allowance"},
+             {"distance_based": True, "pixel_radius": 10, "allowance_threshold": 0, "name": "d=10"},
+             {"distance_based": True, "pixel_radius": 20, "allowance_threshold": 0, "name": "d=20"}
+             ]
     for task in tasks:
-        model = f"models/{task}/weights/best.pt"
-        # model = f"models/train11-big-300epochs/weights/best.pt"
+        # model = f"models/{task}/weights/best.pt"
+        model = f"models/train15-earlystopping184epochs-8l-clinic/weights/best.pt"
         data = f"data/{task.upper()}/"
         subset = "test"
-        output = f"evaluation/{task}"
-        # output = f"evaluation-yolo8L-300/{task}"
-        tp, fp, tn, fn = analyze(model, data, subset, output, distance_based=False, pixel_radius=20, allowance_threshold=0.01, save_csv=True, save_prediction_images=True)
-        print(f"Results for {task}:\n"
-              f"\tTip existed and was correctly detected:\t\t\t{round(tp*100,2)}%\n"
-              f"\tA tip exists, but was not *correctly* detected\t{round(fn*100,2)}%\n"
-              f"\tNo tip exists, but a prediction was done:\t\t{round(fp*100,2)}%\n"
-              f"\tNo tip exists and no prediction was done:\t\t{round(tn*100,2)}%")
+        # output = f"evaluation/{task}"
+        for mode in modes:
+            output = f"evaluation-yolo8l-184/{task}/{mode['name']}"
+            tp, fp, tn, fn = analyze(model, data, subset, output,
+                                     distance_based=mode['distance_based'],
+                                     pixel_radius=mode['pixel_radius'],
+                                     allowance_threshold=mode['allowance_threshold'],
+                                     save_csv=False,
+                                     save_prediction_images=False)
+            print(f"Results for {task} with mode {mode['name']}:\n"
+                  f"\tTip existed and was correctly detected:\t\t\t{round(tp * 100, 2)}%\n"
+                  f"\tA tip exists, but was not *correctly* detected\t{round(fn * 100, 2)}%\n"
+                  f"\tNo tip exists, but a prediction was made:\t\t{round(fp * 100, 2)}%\n"
+                  f"\tNo tip exists and no prediction was made:\t\t{round(tn * 100, 2)}%")
