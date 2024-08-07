@@ -9,13 +9,13 @@ num_sequences = 5
 counts = {}
 
 for instrument in instruments:
-    for sequence in range(num_sequences):
+    for sequence in range(1,num_sequences+1):
         counts[f"{instrument}-p{sequence}"] = {"train-aug": 0, "val-aug": 0, "test-aug": 0, "bg-train": 0, "bg-val": 0, "bg-test": 0, "source-train":0, "source-val":0, "source-test":0}
 
 for task in tasks:
     path = os.path.join(folder, task)
     for filename in os.listdir(path):
-        for sequence in range(num_sequences):
+        for sequence in range(1,num_sequences+1):
             if f"p{sequence}" in filename:
                 for instrument in instruments:
                     if instrument in filename:
