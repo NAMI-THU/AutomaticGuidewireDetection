@@ -8,6 +8,8 @@ augmentation_names = ["hf","vf","rot90","colch","crop"]
 num_sequences = 5
 counts = {}
 
+duplicates_hashset = set()
+
 for instrument in instruments:
     for sequence in range(1,num_sequences+1):
         counts[f"{instrument}-p{sequence}"] = {"train-aug": 0, "val-aug": 0, "test-aug": 0, "bg-train": 0, "bg-val": 0, "bg-test": 0, "source-train":0, "source-val":0, "source-test":0}
@@ -28,6 +30,9 @@ for task in tasks:
                             counts[f"{instrument}-p{sequence}"][taskname] += 1
                         else:
                             counts[f"{instrument}-p{sequence}"][f"source-{task}"] += 1
+        if filename in duplicates_hashset:
+            print(f"Duplicates hash found: {filename}")
+        duplicates_hashset.add(filename)
 
 for entry in counts:
     print(entry, counts[entry])
